@@ -1,0 +1,5 @@
+".\Objects\STARTUP.obj",
+".\Objects\main.obj" 
+TO ".\Objects\TJU_demo" 
+PRINT(".\Listings\TJU_demo.m51") RAMSIZE(256) 
+DISABLEWARNING (16) 

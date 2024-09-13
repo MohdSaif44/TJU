@@ -1,0 +1,378 @@
+C51 COMPILER V9.60.7.0   MAIN                                                              08/29/2024 12:49:50 PAGE 1   
+
+
+C51 COMPILER V9.60.7.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\TJU) DEBUG OBJECTEXTEND PRINT(
+                    -.\Listings\main.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include "STC89xxx.h"
+   2          #include <intrins.h>
+   3          #include "math.h"
+   4          #include "stdio.h"
+   5          #define STRAIGHT_COND !P20 && !P21 && !P22 && !P23
+   6          #define STRAIGHT_COND_2 P21 && P22
+   7          #define STOP_COND P20 && P21 && P22 && P23
+   8          #define LEFT_COND (P20) && !P22 && !P23
+   9          #define RIGHT_COND (P23) && !P20 && !P21
+  10          #define SMALL_LEFT_COND  P21 && !P20 && !P22 && !P23
+  11          #define SMALL_RIGHT_COND  !P21 && !P21 && P22 && !P23
+  12          
+  13          sbit center_left_sensor = P2^1;     // If I see blackline
+  14          sbit right_sensor = P2^3;           // If I see blackline
+  15          sbit center_right_sensor = P2^2;    // If I see blackline
+  16          sbit left_sensor = P2^0;            // If I see blackline
+  17          sbit TEST_LED = P1^0;
+  18          sbit pwm_pin_one = P1^6;
+  19          sbit pwm_pin_two= P1^7;
+  20          sbit start = P3^5;
+  21          sbit restart = P3^4;
+  22          sbit trig =P2^6;
+  23          sbit echo =P2^7;
+  24          sbit buzzer = P2^5;
+  25          
+  26          int pwm_count;
+  27          int count = 1000;
+  28          int speedL = 3;
+  29          int speedR = 3;
+  30          int start_flag = 1;
+  31          int obstacle_flag = 1;
+  32          int boost_flag = 1;
+  33          int restart_flag = 0;
+  34          float sum;
+  35          float distance_measurement;
+  36          float distance_compare;
+  37          
+  38          
+  39          void Delay100ms();
+  40          void Delay1ms(unsigned int ms);
+  41          void Timer0_Init(void);
+  42          void PWM_generation(void);
+  43          void straight(void);
+  44          void left(void);
+  45          void right(void);
+  46          void stop(void);
+  47          void ultra_sonic_handler(void);
+  48          void Delay20us(void); 
+  49          void reverse(void);
+  50          void Timer1_Init(void);
+  51          void Delay10us(void);
+  52          void Auto_Car(void);
+  53          
+  54          
+C51 COMPILER V9.60.7.0   MAIN                                                              08/29/2024 12:49:50 PAGE 2   
+
+  55          
+  56          void main(){
+  57   1        
+  58   1        while(1){ 
+  59   2          if(!restart){
+  60   3            restart_flag = 1;
+  61   3            Timer0_Init();
+  62   3            Timer1_Init();
+  63   3            TEST_LED = 0;
+  64   3            boost_flag = 0;
+  65   3            while(1){
+  66   4              Auto_Car();
+  67   4            }
+  68   3          }
+  69   2          if(!start){
+  70   3            Timer0_Init();
+  71   3            Timer1_Init();
+  72   3            TEST_LED = 0;
+  73   3            while(1){
+  74   4              Auto_Car();
+  75   4         }
+  76   3        }
+  77   2       }
+  78   1      }
+  79          
+  80          /*void extern_0_INT(void){  
+  81            EX0 = 1; // Enable INT0
+  82            IT0 = 1; // Set Falling Edge Trigger for INT0
+  83          }
+  84          
+  85          void ISR_extern_0(void) interrupt 0 // ISR for external interrupt INT0
+  86          {
+  87             ultra_sonic_handler();
+  88             if(distance_compare >= 4.0 && distance_compare <= 5.5 && obstical_flag){
+  89                right();
+  90                Delay1ms(500);
+  91                left();
+  92                Delay1ms(500);
+  93                straight();
+  94                obstical_flag = 0;
+  95            }
+  96          }*/
+  97          
+  98          void Auto_Car()
+  99          {
+ 100   1        PWM_generation();
+ 101   1         if(obstacle_flag){
+ 102   2            //  ultra_sonic_handler();
+ 103   2         }
+ 104   1         if(distance_compare >= 5.0  && distance_compare <= 22.5 && obstacle_flag){
+ 105   2              P15 = !P15;
+ 106   2              right();
+ 107   2              Delay1ms(240);
+ 108   2              straight();
+ 109   2              Delay1ms(390);
+ 110   2              left();
+ 111   2              Delay1ms(430);
+ 112   2              straight();
+ 113   2              obstacle_flag = 0;
+ 114   2           }
+ 115   1           if(STRAIGHT_COND){
+ 116   2              straight();
+C51 COMPILER V9.60.7.0   MAIN                                                              08/29/2024 12:49:50 PAGE 3   
+
+ 117   2          }
+ 118   1           if(STRAIGHT_COND_2){
+ 119   2              straight();
+ 120   2             while(STRAIGHT_COND_2);
+ 121   2           }
+ 122   1           if(SMALL_LEFT_COND){
+ 123   2              left();
+ 124   2              while(!STRAIGHT_COND);
+ 125   2              //Delay1ms(20);
+ 126   2           }
+ 127   1           if(SMALL_RIGHT_COND){
+ 128   2              right();
+ 129   2             while(!STRAIGHT_COND);
+ 130   2             //Delay1ms(20);
+ 131   2           }
+ 132   1          if(LEFT_COND){
+ 133   2              left();
+ 134   2              Delay1ms(30); 
+ 135   2              while(!center_left_sensor);
+ 136   2            
+ 137   2           }
+ 138   1           if(RIGHT_COND){
+ 139   2              right();
+ 140   2              Delay1ms(30);
+ 141   2              while(!center_right_sensor);
+ 142   2          }
+ 143   1      }
+ 144          
+ 145          void timer0_update() interrupt 1
+ 146          {
+ 147   1          TR0 = 0;
+ 148   1          TL0 = 0xAE;       //Initial timer value
+ 149   1          TH0 = 0xFB;     //reload timer0 high byte
+ 150   1        
+ 151   1          count++;
+ 152   1        
+ 153   1          if(count >= 6400 && boost_flag){
+ 154   2            buzzer = 0;
+ 155   2          }
+ 156   1          if(count >= 6500){
+ 157   2          TEST_LED = 1;
+ 158   2          boost_flag = 0; 
+ 159   2          buzzer = 1;      
+ 160   2         }
+ 161   1          if(count >= 19100 && !restart_flag){
+ 162   2          TEST_LED = 0;
+ 163   2          //boost_flag = 1; 
+ 164   2          buzzer = 0;      
+ 165   2         }
+ 166   1          if(count >= 19200){
+ 167   2            buzzer = 1;
+ 168   2          }
+ 169   1          if(count >= 25200){
+ 170   2            buzzer = 1;
+ 171   2            boost_flag = 0;
+ 172   2          }
+ 173   1          pwm_count++;
+ 174   1          PWM_generation();
+ 175   1        if (pwm_count >= 10){
+ 176   2          pwm_count = 0;
+ 177   2        }
+ 178   1          TR0 = 1;  
+C51 COMPILER V9.60.7.0   MAIN                                                              08/29/2024 12:49:50 PAGE 4   
+
+ 179   1      }
+ 180          
+ 181          
+ 182          void Delay100ms()   //@12MHz0
+ 183          {
+ 184   1        unsigned char i, j;
+ 185   1      
+ 186   1        i = 195;
+ 187   1        j = 138;
+ 188   1        do
+ 189   1        {
+ 190   2          while (--j);
+ 191   2        } while (--i);
+ 192   1      }
+ 193          
+ 194          void Timer0_Init(void)    //100us @ 12MHz
+ 195          {
+ 196   1        AUXR |= 0x80;     //imer clock is 1T mode
+ 197   1        TMOD &= 0xF0;     //Set timer work mode
+ 198   1        TMOD |= 0x01;     //Set timer work mode
+ 199   1        TL0 = 0xAE;       //Initial timer value
+ 200   1        TH0 = 0xFB;       //Initial timer value
+ 201   1        TF0 = 0;          //Clear TF0 flag
+ 202   1        ET0 = 1;        
+ 203   1        EA  = 1;         
+ 204   1        TR0 = 1;          //Timer0 start run
+ 205   1      }
+ 206          
+ 207          void PWM_generation(void)
+ 208          {
+ 209   1        if (pwm_count < speedL){
+ 210   2          pwm_pin_one = 1;
+ 211   2        }else{
+ 212   2          pwm_pin_one = 0;
+ 213   2        }
+ 214   1        if (pwm_count < speedR){
+ 215   2          pwm_pin_two = 1;
+ 216   2        }else{
+ 217   2          pwm_pin_two = 0;
+ 218   2        }
+ 219   1      }
+ 220          void reverse(void){
+ 221   1        P11 = 0x00;
+ 222   1        P12 = 0x01;
+ 223   1        P13 = 0x00;
+ 224   1        P14 = 0x01;
+ 225   1        speedL = 5;
+ 226   1        speedR = 5;
+ 227   1      }
+ 228          void straight(void){
+ 229   1        P11 = 0x01;
+ 230   1        P12 = 0x00;
+ 231   1        P13 = 0x01;
+ 232   1        P14 = 0x00;
+ 233   1        speedL = 6;
+ 234   1        speedR = 6;
+ 235   1        if(boost_flag){
+ 236   2          speedL++;
+ 237   2          speedR++;
+ 238   2          speedL++;
+ 239   2          speedR++;
+ 240   2        }
+C51 COMPILER V9.60.7.0   MAIN                                                              08/29/2024 12:49:50 PAGE 5   
+
+ 241   1      }
+ 242          void right(void){
+ 243   1        P11 = 0x01;
+ 244   1        P12 = 0x00;
+ 245   1        P13 = 0x00;
+ 246   1        P14 = 0x01;
+ 247   1        speedR = 7;
+ 248   1        speedL = 6;
+ 249   1        if(boost_flag){
+ 250   2          speedL++;
+ 251   2          speedR++;
+ 252   2          speedL++;
+ 253   2          speedR++;
+ 254   2        }
+ 255   1      }
+ 256          void left(void){
+ 257   1        P11 = 0x00;
+ 258   1        P12 = 0x01;
+ 259   1        P13 = 0x01;
+ 260   1        P14 = 0x00;
+ 261   1        speedR = 6;
+ 262   1        speedL = 7;
+ 263   1        if(boost_flag){
+ 264   2          speedL++;
+ 265   2          speedR++;
+ 266   2          speedL++;
+ 267   2          speedR++;
+ 268   2        }
+ 269   1      }
+ 270          void stop(void){
+ 271   1        speedL = 0;
+ 272   1        speedR = 0;
+ 273   1      }
+ 274          
+ 275          void Delay1ms(unsigned int ms)    //@12.000MHz
+ 276          {
+ 277   1        while(ms){
+ 278   2        unsigned char i, j;
+ 279   2          i = 2;
+ 280   2          j = 239;
+ 281   2          do
+ 282   2          {
+ 283   3            while (--j);
+ 284   3          } while (--i);
+ 285   2          ms--;
+ 286   2        }
+ 287   1      }
+ 288          
+ 289          void Delay300ms()   //@11.0592MHz
+ 290          {
+ 291   1        unsigned char i, j, k;
+ 292   1      
+ 293   1        i = 13;
+ 294   1        j = 156;
+ 295   1        k = 83;
+ 296   1        do
+ 297   1        {
+ 298   2          do
+ 299   2          {
+ 300   3            while (--k);
+ 301   3          } while (--j);
+ 302   2        } while (--i);
+C51 COMPILER V9.60.7.0   MAIN                                                              08/29/2024 12:49:50 PAGE 6   
+
+ 303   1      }
+ 304          
+ 305          
+ 306          void Delay20us()    //@11.0592MHz
+ 307          {
+ 308   1        unsigned char i;
+ 309   1      
+ 310   1        i = 6;
+ 311   1        while (--i);
+ 312   1      }
+ 313          void Timer1_Init(void){
+ 314   1        AUXR &= 0xBF; 
+ 315   1        TMOD &= 0X0F;
+ 316   1        TMOD |= 0X10;
+ 317   1        TL1 = 0x00;       //Initial timer value
+ 318   1        TH1 = 0xFF; 
+ 319   1      }
+ 320          void ultra_sonic_handler(void)
+ 321          {
+ 322   1        
+ 323   1        trig=1;
+ 324   1        Delay1ms(10);
+ 325   1        trig=0;
+ 326   1        TL1 = 0;
+ 327   1        TH1 = 0;
+ 328   1        while(!echo);
+ 329   1        TR1=1;
+ 330   1        while(echo);
+ 331   1        TR1=0;
+ 332   1        
+ 333   1        distance_measurement = (TL1+(TH1<<8));  // read timer for time count 
+ 334   1        distance_compare = (distance_measurement*0.00034*100)/2.0;  // find distance(in cm) 
+ 335   1        
+ 336   1      }
+ 337          
+ 338          void Delay10us()    //@11.0592MHz
+ 339          {
+ 340   1        unsigned char i;
+ 341   1      
+ 342   1        i = 2;
+ 343   1        while (--i);
+ 344   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    900    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     28       2
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
